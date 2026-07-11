@@ -27,3 +27,26 @@ export async function loginUser(data: { email: string; password: string }) {
   if (!res.ok) throw new Error(body.error || "Erreur lors de la connexion");
   return body;
 }
+
+export async function saveCard(data: {
+  canvasJson: object;
+  thumbnail: string;
+  format: string;
+  widthPx: number;
+  heightPx: number;
+  cardId?: string;
+}) {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/cards${data.cardId ? `/${data.cardId}` : ""}`, {
+    method: data.cardId ? "PUT" : "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || "Erreur lors de la sauvegarde");
+  return body;
+}
