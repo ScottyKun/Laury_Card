@@ -24,7 +24,7 @@ export default function LoginPage() {
     try {
       const { token } = await loginUser({ email, password });
       setToken(token);
-      router.push("/");
+      router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue");
     } finally {

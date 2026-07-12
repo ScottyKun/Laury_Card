@@ -17,7 +17,7 @@ export function useCanvasHistory(canvas: Canvas | null) {
 
   const pushState = useCallback(() => {
     if (!canvas || isRestoringRef.current) return;
-    const json = JSON.stringify(canvas.toJSON());
+    const json = JSON.stringify(canvas.toObject(["isSticker"]));
     historyRef.current = historyRef.current.slice(0, indexRef.current + 1);
     historyRef.current.push(json);
     indexRef.current = historyRef.current.length - 1;
@@ -27,7 +27,7 @@ export function useCanvasHistory(canvas: Canvas | null) {
   useEffect(() => {
     if (!canvas) return;
 
-    historyRef.current = [JSON.stringify(canvas.toJSON())];
+    historyRef.current = [JSON.stringify(canvas.toObject(["isSticker"]))];
     indexRef.current = 0;
     updateFlags();
 
@@ -71,5 +71,12 @@ export function useCanvasHistory(canvas: Canvas | null) {
     updateFlags();
   }, [restore, updateFlags]);
 
-  return { undo, redo, canUndo, canRedo };
+  const resetHistory = useCallback(() => {
+    if (!canvas) return;
+    historyRef.current = [JSON.stringify(canvas.toJSON())];
+    indexRef.current = 0;
+    updateFlags();
+  }, [canvas, updateFlags]);
+
+  return { undo, redo, canUndo, canRedo, pushState, resetHistory };
 }

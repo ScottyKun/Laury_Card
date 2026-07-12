@@ -29,6 +29,7 @@ export async function loginUser(data: { email: string; password: string }) {
 }
 
 export async function saveCard(data: {
+  title: string;
   canvasJson: object;
   thumbnail: string;
   format: string;
@@ -49,4 +50,95 @@ export async function saveCard(data: {
   const body = await res.json();
   if (!res.ok) throw new Error(body.error || "Erreur lors de la sauvegarde");
   return body;
+}
+
+export type CardSummary = {
+  id: string;
+  title: string;
+  thumbnail_url: string | null;
+  format: string;
+  width_px: number;
+  height_px: number;
+  updated_at: string;
+};
+
+export async function getCards(): Promise<CardSummary[]> {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/cards`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || "Erreur lors du chargement des cartes");
+  return body.cards;
+}
+
+export async function getCurrentUser() {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || "Erreur lors du chargement du profil");
+  return body.user;
+}
+
+export async function deleteCardApi(id: string) {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/cards/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const body = await res.json();
+    throw new Error(body.error || "Erreur lors de la suppression");
+  }
+}
+
+export async function getCardById(id: string) {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/cards/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || "Erreur lors du chargement de la carte");
+  return body.card;
+}
+
+export type Asset = { id: string; url: string; created_at: string };
+
+export async function uploadAsset(file: File): Promise<Asset> {
+  const token = localStorage.getItem("token");
+  const formData = new FormData();
+  formData.append("image", file);
+
+  const res = await fetch(`${API_URL}/assets`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || "Erreur lors de l'upload");
+  return body.asset;
+}
+
+export async function getAssets(): Promise<Asset[]> {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/assets`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || "Erreur lors du chargement");
+  return body.assets;
+}
+
+export async function duplicateCardApi(id: string): Promise<CardSummary> {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/cards/${id}/duplicate`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || "Erreur lors de la duplication");
+  return body.card;
 }

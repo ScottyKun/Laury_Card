@@ -40,7 +40,7 @@ export default function CardCanvas({ width, height, onReady }: CardCanvasProps) 
   }, [width, height]);
 
   return (
-    <div className="flex items-center justify-center rounded-xl border border-dark/10 bg-white p-4 shadow-sm">
+    <div className="overflow-hidden rounded-xl shadow-lg">
       <canvas ref={canvasElRef} />
     </div>
   );

@@ -36,7 +36,7 @@ export default function RegisterPage() {
     try {
       const { token } = await registerUser({ firstName, email, password });
       setToken(token);
-      router.push("/");
+      router.push("/login");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue");
     } finally {
