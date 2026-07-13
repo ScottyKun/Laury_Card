@@ -6,6 +6,7 @@ const morgan = require("morgan");
 const authRoutes = require("./routes/authRoutes");
 const cardRoutes = require("./routes/cardRoutes");
 const assetRoutes = require("./routes/assetRoutes");
+const bookRoutes = require("./routes/bookRoutes");
 
 const app = express();
 app.use(cors());
@@ -19,6 +20,7 @@ app.get("/health", (req, res) => {
 app.use("/auth", authRoutes);
 app.use("/cards", cardRoutes);
 app.use("/assets", assetRoutes);
+app.use("/books", bookRoutes);
 
 
 const PORT = process.env.PORT || 4000;
