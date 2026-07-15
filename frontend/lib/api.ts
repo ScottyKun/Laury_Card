@@ -101,7 +101,7 @@ export async function getCardById(id: string) {
   });
   const body = await res.json();
   if (!res.ok) throw new Error(body.error || "Erreur lors du chargement de la carte");
-  return body.card;
+  return { card: body.card, isOwner: body.isOwner as boolean };
 }
 
 export type Asset = { id: string; url: string; created_at: string };
@@ -216,4 +216,119 @@ export async function deleteBookApi(id: string) {
     const body = await res.json();
     throw new Error(body.error || "Erreur lors de la suppression");
   }
+}
+
+export async function updateProfile(data: { firstName: string; email: string }) {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/auth/me`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || "Erreur lors de la mise à jour");
+  return body.user;
+}
+
+export async function changePassword(data: { currentPassword: string; newPassword: string }) {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/auth/me/password`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || "Erreur lors du changement de mot de passe");
+  return body;
+}
+
+export type ShareItem = {
+  id: string;
+  status: "unread" | "read";
+  created_at: string;
+  card_id: string | null;
+  book_id: string | null;
+  sender_first_name: string;
+  card_title: string | null;
+  card_thumbnail_url: string | null;
+  card_width_px: number | null;
+  card_height_px: number | null;
+  book_title: string | null;
+  book_thumbnail_url: string | null;
+};
+
+export async function shareItem(data: { recipientEmail: string; cardId?: string; bookId?: string }) {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/shares`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || "Erreur lors du partage");
+  return body.share;
+}
+
+export async function getInbox(): Promise<ShareItem[]> {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/shares/inbox`, { headers: { Authorization: `Bearer ${token}` } });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || "Erreur");
+  return body.shares;
+}
+
+export async function getUnreadCount(): Promise<number> {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/shares/unread-count`, { headers: { Authorization: `Bearer ${token}` } });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || "Erreur");
+  return body.count;
+}
+
+export async function markShareReadApi(id: string) {
+  const token = localStorage.getItem("token");
+  await fetch(`${API_URL}/shares/${id}/read`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function forkCardApi(id: string) {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/cards/${id}/fork`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || "Erreur lors de la copie");
+  return body.card;
+}
+
+export async function duplicateBookApi(id: string): Promise<Book> {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/books/${id}/duplicate`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || "Erreur lors de la duplication");
+  return body.book;
+}
+
+export async function exportBookPdf(id: string, title: string) {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/books/${id}/export`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const body = await res.json();
+    throw new Error(body.error || "Erreur lors de l'export");
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${title}.pdf`;
+  link.click();
+  URL.revokeObjectURL(url);
 }

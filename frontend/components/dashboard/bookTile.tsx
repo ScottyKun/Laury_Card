@@ -5,13 +5,15 @@ import Link from "next/link";
 import { MoreVertical, Trash2, BookOpen } from "lucide-react";
 import { Book } from "@/lib/api";
 import { timeAgo } from "@/lib/time";
+import { Copy } from "lucide-react";
 
 type Props = {
   book: Book;
   onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
 };
 
-export default function BookTile({ book, onDelete }: Props) {
+export default function BookTile({ book, onDelete, onDuplicate }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -46,6 +48,12 @@ export default function BookTile({ book, onDelete }: Props) {
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50"
               >
                 <Trash2 size={14} /> Supprimer
+              </button>
+              <button
+                onClick={() => { setMenuOpen(false); onDuplicate(book.id); }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-blue-500 hover:bg-blue-50"
+              >
+                <Copy size={14} /> Dupliquer
               </button>
             </div>
           )}

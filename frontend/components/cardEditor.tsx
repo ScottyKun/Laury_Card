@@ -14,9 +14,11 @@ import PropertiesPanel from "@/components/propertiesPanel";
 import ZoomControls from "@/components/zoomControls";
 import CardCanvas from "@/components/cardCanvas";
 import UnsavedChangesModal from "@/components/unsavedChangesModal";
-import { saveCard, getCardById } from "@/lib/api";
+import { saveCard, getCardById, forkCardApi } from "@/lib/api";
 import { useCanvasHistory } from "@/hooks/useCanvasHistory";
 import { FORMATS, CardFormat } from "@/lib/formats";
+import ShareModal from "@/components/shareModal";
+import CardPreviewModal from "./cardPreviewModal";
 
 type SavedCard = {
   id: string;
@@ -49,14 +51,21 @@ export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Pro
 
   const { undo, redo, canUndo, canRedo, pushState, resetHistory } = useCanvasHistory(canvas);
 
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [isOwner, setIsOwner] = useState(true);
+
+  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+
   // Chargement d'une carte existante
   useEffect(() => {
     if (!cardIdProp) return;
     async function load() {
       try {
-        const card = await getCardById(cardIdProp!);
+        const { card, isOwner: ownerFlag } = await getCardById(cardIdProp!);
         setCardId(card.id);
-        setTitle(card.title);
+        setTitle(ownerFlag ? card.title : `${card.title} (reçue)`);
+        setIsOwner(ownerFlag);
         const matchingPreset = FORMATS.find((f) => f.id === card.format);
         setFormat({
           id: card.format,
@@ -141,15 +150,27 @@ export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Pro
     setSaving(true);
     try {
       const canvasJson = canvas.toObject(["isSticker"]);
-      const thumbnail = canvas.toDataURL({ format: "png", multiplier: 3 });
+      const thumbnail = canvas.toDataURL({ format: "png", multiplier: 2 });
+
+      if (!isOwner && cardId) {
+        // Carte reçue : la première sauvegarde crée votre propre copie éditable
+        const forked = await forkCardApi(cardId);
+        setCardId(forked.id);
+        setIsOwner(true);
+        // Applique immédiatement les modifs en cours sur la copie fraîchement créée
+        const { card } = await saveCard({
+          cardId: forked.id, title, canvasJson, thumbnail,
+          format: format.id, widthPx: format.widthPx, heightPx: format.heightPx,
+        });
+        setSavedAt(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
+        setIsDirty(false);
+        onSaved?.(card);
+        return card;
+      }
+
       const { card } = await saveCard({
-        cardId: cardId || undefined,
-        title,
-        canvasJson,
-        thumbnail,
-        format: format.id,
-        widthPx: format.widthPx,
-        heightPx: format.heightPx,
+        cardId: cardId || undefined, title, canvasJson, thumbnail,
+        format: format.id, widthPx: format.widthPx, heightPx: format.heightPx,
       });
       setCardId(card.id);
       setSavedAt(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
@@ -221,6 +242,13 @@ export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Pro
     stickers: "Stickers", images: "Images", background: "Fond",
   };
 
+  function handlePreview() {
+  if (!canvas) return;
+  const dataUrl = canvas.toDataURL({ format: "png", multiplier: 2 });
+  setPreviewDataUrl(dataUrl);
+  setShowPreview(true);
+}
+
   return (
     <div className="flex h-screen flex-col bg-white">
       <EditorHeader
@@ -236,6 +264,9 @@ export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Pro
         canUndo={canUndo}
         canRedo={canRedo}
         onBack={handleBack}
+        onShare={() => setShowShareModal(true)}
+        isOwner={isOwner}
+        onPreview={handlePreview}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -270,6 +301,19 @@ export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Pro
         onCancel={() => setShowUnsavedModal(false)}
         saving={saving}
       />
+
+      {showShareModal && cardId && (
+        <ShareModal cardId={cardId} onClose={() => setShowShareModal(false)} />
+      )}
+
+      {showPreview && (
+        <CardPreviewModal
+          thumbnailUrl={previewDataUrl}
+          widthPx={format.widthPx}
+          heightPx={format.heightPx}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
     </div>
   );
 }

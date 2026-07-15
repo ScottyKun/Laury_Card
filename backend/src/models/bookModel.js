@@ -80,7 +80,28 @@ async function replacePages(bookId, pages) {
   }
 }
 
+async function findByIdAny(id) {
+  const result = await pool.query("SELECT * FROM books WHERE id = $1", [id]);
+  return result.rows[0] || null;
+}
+
+async function updateTitleAny(id, title) {
+  const result = await pool.query(
+    "UPDATE books SET title = $1, updated_at = now() WHERE id = $2 RETURNING *",
+    [title, id]
+  );
+  return result.rows[0] || null;
+}
+
+async function isCardUsedInOtherBook(cardId, excludeBookId) {
+  const result = await pool.query(
+    "SELECT 1 FROM book_pages WHERE card_id = $1 AND book_id != $2 LIMIT 1",
+    [cardId, excludeBookId]
+  );
+  return result.rows.length > 0;
+}
+
 module.exports = {
-  create, findAllByOwner, findById, updateTitle, updateCover, remove,
-  getPages, replacePages,
+  create, findAllByOwner, findById, findByIdAny, updateTitle, updateTitleAny, updateCover, remove,
+  getPages, replacePages, isCardUsedInOtherBook,
 };

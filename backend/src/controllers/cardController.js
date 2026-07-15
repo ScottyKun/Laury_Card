@@ -1,5 +1,6 @@
 const { randomUUID } = require("crypto");
 const cardModel = require("../models/cardModel");
+const shareModel = require("../models/shareModel");
 const { uploadThumbnail, ensureBucketExists, copyThumbnailByUrl, deleteThumbnail } = require("../lib/minio");
 
 ensureBucketExists().catch((err) => console.error("Erreur init bucket MinIO:", err));
@@ -75,9 +76,19 @@ async function updateCard(req, res) {
 
 async function getCard(req, res) {
   try {
-    const card = await cardModel.findById(req.params.id, req.userId);
+    let card = await cardModel.findById(req.params.id, req.userId);
+    let isOwner = !!card;
+
+    if (!card) {
+      const share = await shareModel.findShareForCard(req.params.id, req.userId);
+      if (share) {
+        card = await cardModel.findByIdAny(req.params.id);
+        isOwner = false;
+      }
+    }
+
     if (!card) return res.status(404).json({ error: "Carte introuvable" });
-    res.json({ card });
+    res.json({ card, isOwner });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Erreur serveur" });
@@ -144,4 +155,37 @@ async function duplicateCard(req, res) {
   }
 }
 
-module.exports = { createCard, updateCard, getCard, listCards, deleteCard, duplicateCard };
+async function forkCard(req, res) {
+  try {
+    const share = await shareModel.findShareForCard(req.params.id, req.userId);
+    if (!share) return res.status(403).json({ error: "Vous n'avez pas accès à cette carte" });
+
+    const original = await cardModel.findByIdAny(req.params.id);
+    if (!original) return res.status(404).json({ error: "Carte introuvable" });
+
+    const newId = randomUUID();
+    let newThumbnailUrl = null;
+    if (original.thumbnail_url) {
+      const newObjectName = `${req.userId}/${newId}.png`;
+      newThumbnailUrl = await copyThumbnailByUrl(original.thumbnail_url, newObjectName);
+    }
+
+    const forkedCard = await cardModel.create({
+      id: newId,
+      ownerId: req.userId,
+      title: original.title,
+      canvasJson: original.canvas_json,
+      thumbnailUrl: newThumbnailUrl,
+      format: original.format,
+      widthPx: original.width_px,
+      heightPx: original.height_px,
+    });
+
+    res.status(201).json({ card: forkedCard });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+}
+
+module.exports = { createCard, updateCard, getCard, listCards, deleteCard, duplicateCard, forkCard };

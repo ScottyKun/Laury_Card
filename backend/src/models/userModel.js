@@ -18,4 +18,16 @@ async function findById(id) {
   return result.rows[0] || null;
 }
 
-module.exports = { findByEmail, create, findById };
+async function updateProfile(id, { firstName, email }) {
+  const result = await pool.query(
+    "UPDATE users SET first_name = $1, email = $2 WHERE id = $3 RETURNING id, first_name, email, created_at",
+    [firstName, email, id]
+  );
+  return result.rows[0];
+}
+
+async function updatePassword(id, passwordHash) {
+  await pool.query("UPDATE users SET password_hash = $1 WHERE id = $2", [passwordHash, id]);
+}
+
+module.exports = { findByEmail, create, findById, updateProfile, updatePassword };

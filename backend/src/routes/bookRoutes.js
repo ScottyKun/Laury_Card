@@ -10,5 +10,7 @@ router.get("/", bookController.listBooks);
 router.get("/:id", bookController.getBook);
 router.put("/:id", bookController.updateBook);
 router.delete("/:id", bookController.deleteBook);
+router.post("/:id/duplicate", bookController.duplicateBook);
+router.get("/:id/export", bookController.exportBook);
 
 module.exports = router;

@@ -6,9 +6,10 @@ import { Plus, Image as ImageIcon, BookOpen } from "lucide-react";
 import DashboardNavbar from "@/components/dashboard/dashboardNavbar";
 import GreetingBanner from "@/components/dashboard/greetingBanner";
 import CardTile from "@/components/dashboard/cardTile";
-import { getCards, getCurrentUser, deleteCardApi, CardSummary, duplicateCardApi, getBooks, createBookApi, deleteBookApi, Book  } from "@/lib/api";
+import { getCards, getCurrentUser, deleteCardApi, CardSummary, duplicateCardApi, getBooks, createBookApi, deleteBookApi, Book, getUnreadCount, duplicateBookApi  } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import BookTile from "@/components/dashboard/bookTile";
+
 
 export default function DashboardPage() {
   const [firstName, setFirstName] = useState<string>();
@@ -18,13 +19,15 @@ export default function DashboardPage() {
   const router = useRouter();
   const [books, setBooks] = useState<Book[]>([]);
   const [booksLoading, setBooksLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     async function load() {
       try {
-        const [user, cardList] = await Promise.all([getCurrentUser(), getCards()]);
+        const [user, cardList, count] = await Promise.all([getCurrentUser(), getCards(), getUnreadCount()]);
         setFirstName(user.first_name);
         setCards(cardList);
+        setUnreadCount(count);
       } catch (err) {
         console.error(err);
       } finally {
@@ -81,9 +84,19 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleDuplicateBook(id: string) {
+    try {
+      const newBook = await duplicateBookApi(id);
+      setBooks((prev) => [newBook, ...prev]);
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors de la duplication");
+    }
+  }
+
   return (
     <div className="min-h-screen bg-cream">
-      <DashboardNavbar firstName={firstName} />
+      <DashboardNavbar firstName={firstName} unreadCount={unreadCount} />
       <GreetingBanner firstName={firstName} onCreateBook={handleCreateBook}/>
 
       <div className="px-6 pt-8">
@@ -139,7 +152,7 @@ export default function DashboardPage() {
             </button>
 
             {books.map((book) => (
-              <BookTile key={book.id} book={book} onDelete={handleDeleteBook} />
+              <BookTile key={book.id} book={book} onDelete={handleDeleteBook} onDuplicate={handleDuplicateBook} />
             ))}
           </div>
         )}

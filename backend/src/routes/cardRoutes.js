@@ -12,5 +12,6 @@ router.get("/", cardController.listCards);
 router.get("/:id", cardController.getCard);
 router.delete("/:id", cardController.deleteCard);
 router.post("/:id/duplicate", cardController.duplicateCard);
+router.post("/:id/fork", cardController.forkCard);
 
 module.exports = router;

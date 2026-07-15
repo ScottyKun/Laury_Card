@@ -3,10 +3,14 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Plus, X, Eye, Save, Copy, RefreshCw } from "lucide-react";
-import { getBookById, updateBookApi, getCards, CardSummary, BookPage } from "@/lib/api";
+import { getBookById, updateBookApi, getCards, CardSummary, BookPage, exportBookPdf } from "@/lib/api";
 import BookPreview from "@/components/books/bookPreview";
 import { Pencil } from "lucide-react";
 import CardEditorModal from "@/components/cardEditorModal";
+import UnsavedChangesModal from "@/components/unsavedChangesModal";
+import ShareModal from "@/components/shareModal";
+import { Share2 } from "lucide-react";
+import { Download } from "lucide-react";
 
 type LocalPage = {
   cardId: string;
@@ -42,10 +46,17 @@ export default function BookEditorPage() {
   const [editorState, setEditorState] = useState<{ open: boolean; cardId?: string; targetPageIndex?: number }>({ open: false });
   const [replaceTargetIndex, setReplaceTargetIndex] = useState<number | null>(null);
 
+  const [isDirty, setIsDirty] = useState(false);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+
+  const [showShareModal, setShowShareModal] = useState(false);
+
+  const [exporting, setExporting] = useState(false);
+
   useEffect(() => {
     async function load() {
       try {
-        const [{ book, pages: bookPages }, cards] = await Promise.all([getBookById(bookId), getCards()]);
+        const [{ book, pages: bookPages }, cards, ] = await Promise.all([getBookById(bookId), getCards()]);
         setTitle(book.title);
         setPages(
           bookPages.map((p: BookPage) => ({
@@ -75,6 +86,7 @@ export default function BookEditorPage() {
         )
         );
         setReplaceTargetIndex(null);
+        setIsDirty(true);
         return;
     }
 
@@ -87,10 +99,12 @@ export default function BookEditorPage() {
   function removePage(index: number) {
     if (!confirm("Supprimer cette page du livre ?")) return;
     setPages((prev) => prev.filter((_, i) => i !== index));
+    setIsDirty(true);
   }
 
   function setTransition(index: number, transitionType: LocalPage["transitionType"]) {
     setPages((prev) => prev.map((p, i) => (i === index ? { ...p, transitionType } : p)));
+    setIsDirty(true);
   }
 
   function handleDragStart(index: number) {
@@ -106,6 +120,7 @@ export default function BookEditorPage() {
       return next;
     });
     setDragIndex(null);
+    setIsDirty(true);
   }
 
   async function handleSave() {
@@ -115,6 +130,7 @@ export default function BookEditorPage() {
         title,
         pages: pages.map((p) => ({ cardId: p.cardId, transitionType: p.transitionType })),
       });
+      setIsDirty(false);
     } catch (err) {
       console.error(err);
       alert("Erreur lors de la sauvegarde");
@@ -169,24 +185,63 @@ export default function BookEditorPage() {
         next.splice(index + 1, 0, copy);
         return next;
     });
+     setIsDirty(true);
   }
 
   function startReplace(index: number) {
     setReplaceTargetIndex(index);
   }
 
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (!isDirty) return;
+      e.preventDefault();
+      e.returnValue = "";
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
+
+  function handleBack() {
+    if (isDirty) setShowUnsavedModal(true);
+    else router.push("/dashboard");
+  }
+
+  async function handleSaveAndLeave() {
+    await handleSave();
+    setShowUnsavedModal(false);
+    router.push("/dashboard");
+  }
+
+  function handleDiscardAndLeave() {
+    setShowUnsavedModal(false);
+    router.push("/dashboard");
+  }
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      await exportBookPdf(bookId, title);
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "Erreur lors de l'export");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="flex h-screen flex-col">
       <header className="flex h-16 items-center justify-between border-b border-dark/10 bg-cream-dark px-4">
         <div className="flex items-center gap-4">
-          <button onClick={() => router.push("/dashboard")} className="rounded-lg p-2 text-dark/60 hover:bg-white hover:text-dark">
+          <button onClick={handleBack} className="rounded-lg p-2 text-dark/60 hover:bg-white hover:text-dark">
             <ArrowLeft size={20} />
           </button>
           {editingTitle ? (
             <input
               autoFocus
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => { setTitle(e.target.value); setIsDirty(true); }}
               onBlur={() => setEditingTitle(false)}
               onKeyDown={(e) => e.key === "Enter" && setEditingTitle(false)}
               className="rounded-md border border-coral bg-white px-2 py-1 text-sm font-medium outline-none"
@@ -210,11 +265,24 @@ export default function BookEditorPage() {
             <Eye size={16} /> Aperçu
           </button>
           <button
+            onClick={() => setShowShareModal(true)}
+            className="flex items-center gap-2 rounded-full bg-coral-light/20 px-4 py-2 text-sm font-medium text-coral-dark hover:bg-coral-light/30"
+          >
+            <Share2 size={16} /> Partager
+          </button>
+          <button
             onClick={handleSave}
             disabled={saving}
             className="flex items-center gap-2 rounded-full bg-coral px-4 py-2 text-sm font-medium text-white hover:bg-coral-dark disabled:opacity-60"
           >
             <Save size={16} /> {saving ? "Enregistrement..." : "Enregistrer"}
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={exporting || pages.length === 0}
+            className="flex items-center gap-2 rounded-full bg-coral px-4 py-2 text-sm font-medium text-white hover:bg-coral-dark disabled:opacity-50"
+          >
+            <Download size={16} /> {exporting ? "Export..." : "Exporter PDF"}
           </button>
         </div>
       </header>
@@ -352,6 +420,18 @@ export default function BookEditorPage() {
             onClose={() => setEditorState({ open: false })}
             onSaved={handleEditorSaved}
         />
+      )}
+
+      <UnsavedChangesModal
+        open={showUnsavedModal}
+        onSave={handleSaveAndLeave}
+        onDiscard={handleDiscardAndLeave}
+        onCancel={() => setShowUnsavedModal(false)}
+        saving={saving}
+      />
+
+      {showShareModal && (
+        <ShareModal bookId={bookId} onClose={() => setShowShareModal(false)} />
       )}
     </div>
   );
