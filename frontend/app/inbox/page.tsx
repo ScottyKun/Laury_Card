@@ -2,26 +2,33 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Mail } from "lucide-react";
-import { getInbox, markShareReadApi, ShareItem } from "@/lib/api";
+import { ArrowLeft, Mail, Heart, Sparkles } from "lucide-react";
+import { getNotifications, markNotificationReadApi, NotificationItem } from "@/lib/api";
 import { timeAgo } from "@/lib/time";
+
+const iconByType = {
+  share_card: Mail,
+  share_book: Mail,
+  milestone: Heart,
+  nudge: Sparkles,
+};
 
 export default function InboxPage() {
   const router = useRouter();
-  const [shares, setShares] = useState<ShareItem[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getInbox().then(setShares).catch(console.error).finally(() => setLoading(false));
+    getNotifications().then(setNotifications).catch(console.error).finally(() => setLoading(false));
   }, []);
 
-  async function handleOpen(share: ShareItem) {
-    if (share.status === "unread") {
-      await markShareReadApi(share.id);
-      setShares((prev) => prev.map((s) => (s.id === share.id ? { ...s, status: "read" } : s)));
+  async function handleOpen(notif: NotificationItem) {
+    if (!notif.read) {
+      await markNotificationReadApi(notif.id);
+      setNotifications((prev) => prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n)));
     }
-    if (share.card_id) router.push(`/create?id=${share.card_id}`);
-    if (share.book_id) router.push(`/books/${share.book_id}`);
+    if (notif.card_id) router.push(`/create?id=${notif.card_id}`);
+    else if (notif.book_id) router.push(`/books/${notif.book_id}`);
   }
 
   return (
@@ -30,53 +37,38 @@ export default function InboxPage() {
         <button onClick={() => router.push("/dashboard")} className="rounded-lg p-2 text-dark/60 hover:bg-cream">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="font-serif text-xl">Boîte de réception</h1>
+        <h1 className="font-serif text-xl">Notifications</h1>
       </header>
 
       <div className="mx-auto max-w-2xl px-6 py-8">
         {loading ? (
           <p className="text-center text-dark/40">Chargement...</p>
-        ) : shares.length === 0 ? (
+        ) : notifications.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16 text-center text-dark/40">
             <Mail size={32} />
-            <p>Aucun partage reçu pour l&apos;instant.</p>
+            <p>Aucune notification pour l&apos;instant.</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
-            {shares.map((share) => {
-              const title = share.card_title || share.book_title || "Sans titre";
-              const thumbnail = share.card_thumbnail_url || share.book_thumbnail_url;
-              const type = share.card_id ? "Carte" : "Livre";
-
+          <div className="flex flex-col gap-2">
+            {notifications.map((notif) => {
+              const Icon = iconByType[notif.type];
               return (
-                <button
-                  key={share.id}
-                  onClick={() => handleOpen(share)}
-                  className={`flex items-center gap-4 rounded-xl border p-3 text-left transition hover:bg-white ${
-                    share.status === "unread" ? "border-coral/30 bg-coral/5" : "border-dark/10 bg-white"
+                <div
+                  key={notif.id}
+                  onClick={() => handleOpen(notif)}
+                  className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition hover:bg-cream-dark ${
+                    notif.read ? "border-dark/10 bg-white" : "border-coral/30 bg-coral/5"
                   }`}
                 >
-                  <div
-                    style={{
-                      aspectRatio: share.card_width_px ? `${share.card_width_px} / ${share.card_height_px}` : "3 / 4",
-                    }}
-                    className="h-16 overflow-hidden rounded-lg bg-cream-dark"
-                  >
-                    {thumbnail && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={thumbnail} alt={title} className="h-full w-full object-cover" />
-                    )}
-                  </div>
-
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-coral/10 text-coral">
+                    <Icon size={16} />
+                  </span>
                   <div className="flex-1">
-                    <p className="text-sm font-medium">{title}</p>
-                    <p className="text-xs text-dark/50">
-                      {type} · De {share.sender_first_name} · {timeAgo(share.created_at)}
-                    </p>
+                    <p className="text-sm">{notif.message}</p>
+                    <p className="mt-0.5 text-xs text-dark/40">{timeAgo(notif.created_at)}</p>
                   </div>
-
-                  {share.status === "unread" && <span className="h-2 w-2 rounded-full bg-coral" />}
-                </button>
+                  {!notif.read && <span className="h-2 w-2 shrink-0 rounded-full bg-coral" />}
+                </div>
               );
             })}
           </div>

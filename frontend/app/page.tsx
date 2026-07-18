@@ -1,9 +1,13 @@
+"use client";
+
 import Link from "next/link";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import DecorativeCards from "@/components/decorativeCards";
+import { useIsAuthenticated } from "@/hooks/useAuth";
 
 export default function Home() {
+  const isAuthenticated = useIsAuthenticated();
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden">
       <div className="pointer-events-none absolute -right-40 -top-40 h-[500px] w-[500px] rounded-full bg-coral/20 blur-3xl" />
@@ -31,17 +35,14 @@ export default function Home() {
             </p>
 
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Link
-                href="/create"
-                className="rounded-full bg-coral px-6 py-3 text-center font-medium text-white transition hover:bg-coral-dark"
-              >
+              <Link href="/create" className="rounded-full bg-coral px-6 py-3 text-center font-medium text-white transition hover:bg-coral-dark">
                 Créer ma première carte →
               </Link>
               <Link
-                href="/login"
+                href={isAuthenticated ? "/dashboard" : "/login"}
                 className="rounded-full border border-dark/10 bg-white px-6 py-3 text-center font-medium text-dark transition hover:bg-cream-dark"
               >
-                Se connecter
+                {isAuthenticated ? "Accéder à mon espace" : "Se connecter"}
               </Link>
             </div>
           </div>

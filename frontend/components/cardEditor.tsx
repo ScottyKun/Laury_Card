@@ -19,6 +19,7 @@ import { useCanvasHistory } from "@/hooks/useCanvasHistory";
 import { FORMATS, CardFormat } from "@/lib/formats";
 import ShareModal from "@/components/shareModal";
 import CardPreviewModal from "./cardPreviewModal";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type SavedCard = {
   id: string;
@@ -56,6 +57,9 @@ export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Pro
 
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
 
   // Chargement d'une carte existante
   useEffect(() => {
@@ -272,12 +276,19 @@ export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Pro
       <div className="flex flex-1 overflow-hidden">
         <EditorSidebar activeTool={activeTool} onSelectTool={setActiveTool} />
 
-        <div className="flex w-72 flex-col border-r border-dark/10 bg-white">
-          <div className="border-b border-dark/10 px-5 py-4">
+        <div className={`relative flex flex-col border-r border-dark/10 bg-white transition-all duration-200 ${leftPanelCollapsed ? "w-0 overflow-hidden" : "w-72"}`}>
+          <div className="flex items-center justify-between border-b border-dark/10 px-5 py-4">
             <h2 className="font-medium">{panelTitles[activeTool]}</h2>
           </div>
           {renderLeftPanel()}
         </div>
+
+        <button
+          onClick={() => setLeftPanelCollapsed((v) => !v)}
+          className="z-10 flex h-8 w-5 items-center justify-center self-center rounded-r-lg border border-l-0 border-dark/10 bg-white text-dark/40 hover:text-coral"
+        >
+          {leftPanelCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </button>
 
         <div className="relative flex flex-1 items-center justify-center overflow-auto bg-dark/90 p-8">
           <div style={{ transform: `scale(${zoom / 100})` }}>
@@ -286,12 +297,21 @@ export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Pro
           <ZoomControls zoom={zoom} onZoomChange={setZoom} />
         </div>
 
-        <PropertiesPanel
-          canvas={canvas}
-          selectedObject={selectedObject}
-          onDelete={handleDeleteSelected}
-          onChange={() => { pushState(); setIsDirty(true); }}
-        />
+        <button
+          onClick={() => setRightPanelCollapsed((v) => !v)}
+          className="z-10 flex h-8 w-5 items-center justify-center self-center rounded-l-lg border border-r-0 border-dark/10 bg-white text-dark/40 hover:text-coral"
+        >
+          {rightPanelCollapsed ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+        </button>
+
+        <div className={`overflow-hidden border-l border-dark/10 bg-white transition-all duration-200 ${rightPanelCollapsed ? "w-0" : "w-72"}`}>
+          <PropertiesPanel
+            canvas={canvas}
+            selectedObject={selectedObject}
+            onDelete={handleDeleteSelected}
+            onChange={() => { pushState(); setIsDirty(true); }}
+          />
+        </div>
       </div>
 
       <UnsavedChangesModal

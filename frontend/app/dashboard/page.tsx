@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, Image as ImageIcon, BookOpen } from "lucide-react";
 import DashboardNavbar from "@/components/dashboard/dashboardNavbar";
 import GreetingBanner from "@/components/dashboard/greetingBanner";
 import CardTile from "@/components/dashboard/cardTile";
-import { getCards, getCurrentUser, deleteCardApi, CardSummary, duplicateCardApi, getBooks, createBookApi, deleteBookApi, Book, getUnreadCount, duplicateBookApi  } from "@/lib/api";
+import { getCards, getCurrentUser, deleteCardApi, CardSummary, duplicateCardApi, getBooks, createBookApi, deleteBookApi, Book, getUnreadNotificationCount, duplicateBookApi  } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import BookTile from "@/components/dashboard/bookTile";
+import { subscribeToPush } from "@/lib/push";
 
 
 export default function DashboardPage() {
@@ -20,11 +21,24 @@ export default function DashboardPage() {
   const [books, setBooks] = useState<Book[]>([]);
   const [booksLoading, setBooksLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [pushWarning, setPushWarning] = useState<string | null>(null);
+  const [pushWarningDismissed, setPushWarningDismissed] = useState(false);
+  const handleNewNotification = useCallback(() => {
+    setUnreadCount((prev) => prev + 1);
+  }, []);
+
+  useEffect(() => {
+    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    if (!vapidKey) return;
+    subscribeToPush(vapidKey).then((result) => {
+      if (!result.success) setPushWarning(result.reason || "Notifications système indisponibles.");
+    });
+  }, []);
 
   useEffect(() => {
     async function load() {
       try {
-        const [user, cardList, count] = await Promise.all([getCurrentUser(), getCards(), getUnreadCount()]);
+        const [user, cardList, count] = await Promise.all([getCurrentUser(), getCards(), getUnreadNotificationCount()]);
         setFirstName(user.first_name);
         setCards(cardList);
         setUnreadCount(count);
@@ -96,7 +110,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-cream">
-      <DashboardNavbar firstName={firstName} unreadCount={unreadCount} />
+      <DashboardNavbar firstName={firstName} unreadCount={unreadCount} onNewNotification={handleNewNotification}/>
       <GreetingBanner firstName={firstName} onCreateBook={handleCreateBook}/>
 
       <div className="px-6 pt-8">
@@ -124,15 +138,6 @@ export default function DashboardPage() {
             <p className="py-10 text-center text-dark/40">Chargement...</p>
           ) : (
             <div className="grid grid-cols-2 gap-6 py-8 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              <Link
-                href="/create"
-                className="flex aspect-[3/4] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-dark/15 text-dark/50 hover:border-coral hover:text-coral"
-              >
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-dark/5">
-                  <Plus size={18} />
-                </span>
-                Créer une carte
-              </Link>
 
               {cards.map((card, i) => (
                 <CardTile key={card.id} card={card} index={i} onDelete={handleDelete} onDuplicate={handleDuplicate} />
@@ -141,22 +146,20 @@ export default function DashboardPage() {
           )
         ) : (
           <div className="grid grid-cols-2 gap-6 py-8 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            <button
-              onClick={handleCreateBook}
-              className="flex aspect-[3/4] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-dark/15 text-dark/50 hover:border-coral hover:text-coral"
-            >
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-dark/5">
-                <Plus size={18} />
-              </span>
-              Créer un livre
-            </button>
-
             {books.map((book) => (
               <BookTile key={book.id} book={book} onDelete={handleDeleteBook} onDuplicate={handleDuplicateBook} />
             ))}
           </div>
         )}
       </div>
+      {pushWarning && !pushWarningDismissed && (
+        <div className="mx-6 mt-4 flex items-center justify-between rounded-lg bg-dark/5 px-4 py-2.5 text-xs text-dark/60">
+          <span>ℹ️ {pushWarning} Vous recevrez toujours vos notifications dans l&apos;app.</span>
+          <button onClick={() => setPushWarningDismissed(true)} className="ml-3 font-medium hover:text-dark">
+            Ignorer
+          </button>
+        </div>
+      )}
     </div>
   );
 }

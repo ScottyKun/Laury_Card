@@ -1,16 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { Search, Mail } from "lucide-react";
+import { Search, Mail, LogOut } from "lucide-react";
+import { useEffect } from "react";
+import { getSocket } from "@/lib/socket";
 import Logo from "@/components/logo";
+import { logout } from "@/lib/auth";
 
 type Props = {
   firstName?: string;
-  unreadCount?: number;
+  unreadCount: number;
+  onNewNotification: () => void;
 };
 
-export default function DashboardNavbar({ firstName, unreadCount = 0 }: Props) {
+export default function DashboardNavbar({ firstName, unreadCount, onNewNotification }: Props) {
   const initial = firstName?.charAt(0).toUpperCase() || "?";
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    socket.on("notification:new", onNewNotification);
+    return () => {
+      socket.off("notification:new", onNewNotification);
+    };
+  }, [onNewNotification]);
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-dark/10 bg-white px-6">
@@ -33,6 +47,12 @@ export default function DashboardNavbar({ firstName, unreadCount = 0 }: Props) {
         <Link href="/profile" className="flex h-9 w-9 items-center justify-center rounded-full bg-coral/20 text-sm font-medium text-coral-dark hover:bg-coral/30">
           {initial}
         </Link>
+        <button
+          onClick={logout}
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-coral/20 text-sm font-medium text-coral-dark hover:bg-coral/30"
+        >
+          <LogOut size={14} />
+        </button>
       </div>
     </header>
   );

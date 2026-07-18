@@ -1,0 +1,27 @@
+<svg width="360" height="96" viewBox="0 0 360 96" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgFull" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F79C86"/>
+      <stop offset="100%" stop-color="#D65F42"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Icône -->
+  <g transform="translate(0,0) scale(0.1875)">
+    <rect width="512" height="512" rx="120" fill="url(#bgFull)"/>
+    <rect x="146" y="150" width="220" height="260" rx="20" fill="#ffffff" opacity="0.35" transform="rotate(-6 256 280)"/>
+    <rect x="146" y="140" width="220" height="260" rx="20" fill="#ffffff" transform="rotate(4 256 270)"/>
+    <g transform="rotate(4 256 270)">
+      <rect x="176" y="190" width="120" height="10" rx="5" fill="#F0785A" opacity="0.25"/>
+      <rect x="176" y="214" width="90" height="10" rx="5" fill="#F0785A" opacity="0.25"/>
+    </g>
+    <g transform="rotate(4 256 270) translate(196 250)">
+      <path d="M60 26 C60 10, 46 0, 32 0 C22 0, 14 6, 10 14 C6 6, -2 0, -12 0 C-26 0, -40 10, -40 26 C-40 50, -10 74, 10 90 C30 74, 60 50, 60 26 Z" fill="#F0785A"/>
+    </g>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="112" y="60" font-family="Georgia, 'Playfair Display', serif" font-size="34" fill="#2A211D">
+    Cartes<tspan fill="#F0785A">&amp;</tspan>Mots
+  </text>
+</svg>

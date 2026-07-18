@@ -17,6 +17,7 @@ import {
   Abril_Fatface,
 } from "next/font/google";
 import "./globals.css";
+import ServiceWorkerRegister from "@/components/serviceWorkerRegister";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-body" });
 const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-heading" });
@@ -36,6 +37,16 @@ const robotoSlab = Roboto_Slab({ subsets: ["latin"], variable: "--font-roboto-sl
 export const metadata: Metadata = {
   title: "Cartes&Mots",
   description: "Votre espace créatif pour des cartes et livres virtuels qui touchent le cœur.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Cartes&Mots",
+  },
+};
+
+export const viewport = {
+  themeColor: "#F0785A",
 };
 
 export default function RootLayout({
@@ -50,6 +61,7 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
     >
       <body className="bg-cream text-dark font-sans">
+        <ServiceWorkerRegister />
         {children}
       </body>
     </html>

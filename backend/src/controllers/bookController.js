@@ -4,7 +4,7 @@ const shareModel = require("../models/shareModel");
 const cardModel = require("../models/cardModel");
 const { copyThumbnailByUrl } = require("../lib/minio");
 const { PDFDocument } = require("pdf-lib");
-const { minioClient, BUCKET } = require("../lib/minio");
+const { minioClient, BUCKET, extractObjectName } = require("../lib/minio");
 const { deleteThumbnail } = require("../lib/minio");
 
 async function createBook(req, res) {
@@ -176,10 +176,6 @@ async function getThumbnailBuffer(objectName) {
   return Buffer.concat(chunks);
 }
 
-function extractObjectName(url) {
-  const prefix = `http://localhost:9000/${BUCKET}/`;
-  return url.startsWith(prefix) ? url.slice(prefix.length) : null;
-}
 
 async function exportBook(req, res) {
   try {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AuthPanel from "@/components/authPanel";
 import AuthToggle from "@/components/authToggle";
@@ -15,6 +15,9 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const searchParams = useSearchParams();
+  const expired = searchParams.get("expired");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,6 +54,12 @@ export default function LoginPage() {
             Connectez-vous pour retrouver vos créations.
           </p>
 
+          {expired && (
+            <p className="mb-4 rounded-lg bg-coral/10 px-4 py-2 text-sm text-coral-dark">
+              Votre session a expiré, reconnectez-vous.
+            </p>
+          )}
+          
           <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5">
             <div>
               <label htmlFor="email" className="mb-1.5 block text-sm font-medium">

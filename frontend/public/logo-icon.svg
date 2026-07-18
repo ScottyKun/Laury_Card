@@ -1,0 +1,39 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F79C86"/>
+      <stop offset="100%" stop-color="#D65F42"/>
+    </linearGradient>
+    <linearGradient id="cardShadow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fond -->
+  <rect width="512" height="512" rx="120" fill="url(#bg)"/>
+
+  <!-- Carte arrière (légèrement décalée, effet de pile) -->
+  <rect x="146" y="150" width="220" height="260" rx="20" fill="#ffffff" opacity="0.35" transform="rotate(-6 256 280)"/>
+
+  <!-- Carte principale -->
+  <rect x="146" y="140" width="220" height="260" rx="20" fill="#ffffff" transform="rotate(4 256 270)"/>
+
+  <!-- Lignes de texte suggérées sur la carte -->
+  <g transform="rotate(4 256 270)">
+    <rect x="176" y="190" width="120" height="10" rx="5" fill="#F0785A" opacity="0.25"/>
+    <rect x="176" y="214" width="90" height="10" rx="5" fill="#F0785A" opacity="0.25"/>
+  </g>
+
+  <!-- Cœur (sceau) -->
+  <g transform="rotate(4 256 270) translate(196 250)">
+    <path d="M60 26
+             C60 10, 46 0, 32 0
+             C22 0, 14 6, 10 14
+             C6 6, -2 0, -12 0
+             C-26 0, -40 10, -40 26
+             C-40 50, -10 74, 10 90
+             C30 74, 60 50, 60 26 Z"
+          fill="#F0785A"/>
+  </g>
+</svg>

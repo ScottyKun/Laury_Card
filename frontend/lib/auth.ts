@@ -1,5 +1,6 @@
 const TOKEN_KEY = "token";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; 
+import { disconnectSocket } from "./socket";
 
 export function setToken(token: string) {
   localStorage.setItem(TOKEN_KEY, token);
@@ -14,4 +15,10 @@ export function getToken(): string | null {
 export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
   document.cookie = "token=; path=/; max-age=0";
+  disconnectSocket();
+}
+
+export function logout() {
+  clearToken();
+  window.location.href = "/";
 }
