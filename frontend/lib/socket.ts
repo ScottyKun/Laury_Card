@@ -9,7 +9,8 @@ export function getSocket(): Socket | null {
   if (!token) return null;
 
   if (!socket) {
-    socket = io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000", {
+    socket = io(process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:4000", {
+      path: "/api/socket.io",
       auth: { token },
     });
   }

@@ -1,0 +1,103 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cards_frontend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=https://card.famproject.cloud/api
+      - NEXT_PUBLIC_VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
+    networks:
+      - internal
+      - traefik-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.cartes-frontend.rule=Host(`card.famproject.cloud`)"
+      - "traefik.http.routers.cartes-frontend.entrypoints=websecure"
+      - "traefik.http.routers.cartes-frontend.tls.certresolver=leresolver"
+      - "traefik.http.services.cartes-frontend.loadbalancer.server.port=3000"
+      - "traefik.docker.network=traefik-public"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cards_backend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_USE_SSL=false
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - MINIO_PUBLIC_URL=https://minio.famproject.cloud
+      - MINIO_BUCKET_CARDS=${MINIO_BUCKET_CARDS}
+      - MINIO_BUCKET_UPLOADS=${MINIO_BUCKET_UPLOADS}
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
+    depends_on:
+      - postgres
+      - minio
+    networks:
+      - internal
+      - traefik-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.cartes-backend.rule=Host(`card.famproject.cloud`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.cartes-backend.entrypoints=websecure"
+      - "traefik.http.routers.cartes-backend.tls.certresolver=leresolver"
+      - "traefik.http.routers.cartes-backend.middlewares=cartes-strip-api"
+      - "traefik.http.middlewares.cartes-strip-api.stripprefix.prefixes=/api"
+      - "traefik.http.services.cartes-backend.loadbalancer.server.port=4000"
+      - "traefik.docker.network=traefik-public"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: cartes_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d
+    networks:
+      - internal
+
+  minio:
+    image: minio/minio:latest
+    container_name: cartes_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    networks:
+      - internal
+      - traefik-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.cartes-minio.rule=Host(`minio.famproject.cloud`)"
+      - "traefik.http.routers.cartes-minio.entrypoints=websecure"
+      - "traefik.http.routers.cartes-minio.tls.certresolver=leresolver"
+      - "traefik.http.services.cartes-minio.loadbalancer.server.port=9000"
+      - "traefik.docker.network=traefik-public"
+      # Port 9001 (console admin) volontairement NON exposé via Traefik
+
+volumes:
+  postgres_data:
+  minio_data:
+
+networks:
+  internal:
+  traefik-public:
+    external: true
