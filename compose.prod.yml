@@ -5,6 +5,9 @@ services:
       dockerfile: Dockerfile
     container_name: cards_frontend
     restart: unless-stopped
+    args:
+      NEXT_PUBLIC_API_URL: https://card.famproject.cloud/api
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=https://card.famproject.cloud/api
