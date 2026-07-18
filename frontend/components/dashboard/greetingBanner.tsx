@@ -12,7 +12,7 @@ export default function GreetingBanner({ firstName, onCreateBook }: Props) {
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="font-serif text-2xl">Bonjour, {firstName || "vous"} ✨</h1>
-          <p className="mt-1 text-dark/60">Prête à créer de magnifiques souvenirs aujourd&apos;hui ?</p>
+          <p className="mt-1 text-dark/60">Envie de créer de magnifiques souvenirs aujourd&apos;hui ?</p>
         </div>
 
         <div className="flex gap-3">
