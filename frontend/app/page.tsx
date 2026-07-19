@@ -22,7 +22,7 @@ export default function Home() {
               ✦ Créez, personnalisez, partagez
             </span>
 
-            <h1 className="font-serif text-4xl leading-tight md:text-5xl">
+            <h1 className="font-serif text-3xl leading-tight md:text-5xl">
               Des cartes qui{" "}
               <span className="font-script text-coral text-5xl md:text-6xl">
                 touchent le cœur

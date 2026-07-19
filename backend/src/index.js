@@ -2,6 +2,8 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 
 const http = require("http");
 const { Server } = require("socket.io");
@@ -28,9 +30,21 @@ webpush.setVapidDetails(
 );
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: process.env.NODE_ENV === "production" ? "https://card.famproject.cloud" : "http://localhost:3000",
+  credentials: true,
+}));
 app.use(morgan("dev")); 
 app.use(express.json({ limit: "10mb" }));
+app.set("trust proxy", 1);
+
+app.use(helmet());
+
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300, // large, juste pour éviter l'abus/déni de service basique
+});
+app.use(globalLimiter);
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });

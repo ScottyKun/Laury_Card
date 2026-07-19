@@ -15,7 +15,8 @@ async function uploadAsset(req, res) {
   }
 
   try {
-    const objectName = `${req.userId}/${randomUUID()}-${req.file.originalname}`;
+    const safeName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const objectName = `${req.userId}/${randomUUID()}-${safeName}`;
     const url = await uploadImage(objectName, req.file.buffer, req.file.mimetype);
 
     const asset = await assetModel.create({ ownerId: req.userId, type: "uploaded_image", url });

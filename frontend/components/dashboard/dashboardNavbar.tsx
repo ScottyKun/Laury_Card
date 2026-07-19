@@ -27,7 +27,7 @@ export default function DashboardNavbar({ firstName, unreadCount, onNewNotificat
   }, [onNewNotification]);
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-dark/10 bg-white px-6">
+    <header className="flex h-16 items-center justify-between border-b border-dark/10 bg-white px-4 md:px-6">
       <Logo />
 
       <div className="hidden max-w-md flex-1 items-center gap-2 rounded-full bg-cream px-4 py-2 md:flex">

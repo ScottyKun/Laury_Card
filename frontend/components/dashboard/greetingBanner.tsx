@@ -15,17 +15,11 @@ export default function GreetingBanner({ firstName, onCreateBook }: Props) {
           <p className="mt-1 text-dark/60">Envie de créer de magnifiques souvenirs aujourd&apos;hui ?</p>
         </div>
 
-        <div className="flex gap-3">
-          <button
-            onClick={onCreateBook}
-            className="flex items-center gap-2 whitespace-nowrap rounded-full border border-coral/30 bg-white px-5 py-3 text-sm font-medium text-coral hover:bg-coral/5"
-          >
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <button onClick={onCreateBook} className="flex w-full items-center justify-center gap-2 rounded-full border border-coral/30 bg-white px-5 py-3 text-sm font-medium text-coral hover:bg-coral/5 sm:w-auto">
             <BookOpen size={18} /> Nouveau livre
           </button>
-          <Link
-            href="/create"
-            className="flex items-center gap-2 whitespace-nowrap rounded-full bg-coral px-5 py-3 text-sm font-medium text-white hover:bg-coral-dark"
-          >
+          <Link href="/create" className="flex w-full items-center justify-center gap-2 rounded-full bg-coral px-5 py-3 text-sm font-medium text-white hover:bg-coral-dark sm:w-auto">
             <Plus size={18} /> Nouvelle carte
           </Link>
         </div>

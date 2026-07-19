@@ -1,4 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+let isRedirectingToLogin = false;
 
 async function parseJsonResponse(res: Response) {
   const text = await res.text();
@@ -19,7 +20,12 @@ async function authorizedFetch(url: string, options: RequestInit = {}) {
   if (res.status === 401) {
     localStorage.removeItem("token");
     document.cookie = "token=; path=/; max-age=0";
-    window.location.href = "/login?expired=1";
+
+    if (!isRedirectingToLogin) {
+      isRedirectingToLogin = true;
+      window.location.href = "/login?expired=1";
+    }
+
     throw new Error("Session expirée");
   }
 
@@ -54,7 +60,18 @@ export async function loginUser(data: { email: string; password: string }) {
   });
   const body = await parseJsonResponse(res);
   if (!res.ok) throw new Error(body.error || "Erreur lors de la connexion");
-  return body;
+  return body; // { mfaRequired: true, userId }
+}
+
+export async function verifyMfaApi(data: { userId: string; code: string }) {
+  const res = await fetch(`${API_URL}/auth/verify-mfa`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  const body = await parseJsonResponse(res);
+  if (!res.ok) throw new Error(body.error || "Code invalide");
+  return body; // { user, token }
 }
 
 export async function getCurrentUser() {

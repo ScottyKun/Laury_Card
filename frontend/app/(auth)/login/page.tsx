@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AuthPanel from "@/components/authPanel";
 import AuthToggle from "@/components/authToggle";
-import { loginUser } from "@/lib/api";
+import { loginUser, verifyMfaApi } from "@/lib/api";
 import { setToken } from "@/lib/auth";
 
 function LoginForm() {
@@ -19,17 +19,35 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const expired = searchParams.get("expired");
 
+  const [step, setStep] = useState<"credentials" | "mfa">("credentials");
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
-
     try {
-      const { token } = await loginUser({ email, password });
+      const { userId } = await loginUser({ email, password });
+      setPendingUserId(userId);
+      setStep("mfa");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Une erreur est survenue");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleMfaSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const { token } = await verifyMfaApi({ userId: pendingUserId!, code: mfaCode });
       setToken(token);
       router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Une erreur est survenue");
+      setError(err instanceof Error ? err.message : "Code invalide");
     } finally {
       setLoading(false);
     }
@@ -60,62 +78,78 @@ function LoginForm() {
             </p>
           )}
           
-          <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5">
-            <div>
-              <label htmlFor="email" className="mb-1.5 block text-sm font-medium">
-                Adresse e-mail
-              </label>
+          {step === "mfa" ? (
+            <form onSubmit={handleMfaSubmit} className="mt-8 flex flex-col gap-5">
+              <p className="text-sm text-dark/60">Un code à 6 chiffres a été envoyé à votre adresse email.</p>
               <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="marie@exemple.com"
-                className="w-full rounded-xl border border-dark/10 px-4 py-3 text-sm outline-none focus:border-coral"
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value)}
+                maxLength={6}
+                placeholder="000000"
+                className="w-full rounded-xl border border-dark/10 px-4 py-3 text-center text-2xl tracking-widest outline-none focus:border-coral"
               />
-            </div>
-
-            <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <label htmlFor="password" className="text-sm font-medium">
-                  Mot de passe
+              {error && <p className="text-sm text-red-500">{error}</p>}
+              <button type="submit" disabled={loading} className="rounded-full bg-coral py-3 font-medium text-white hover:bg-coral-dark disabled:opacity-60">
+                {loading ? "Vérification..." : "Confirmer"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5">
+              <div>
+                <label htmlFor="email" className="mb-1.5 block text-sm font-medium">
+                  Adresse e-mail
                 </label>
-                <Link href="/forgot-password" className="text-sm text-coral hover:underline">
-                  Mot de passe oublié ?
-                </Link>
-              </div>
-              <div className="relative">
                 <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
+                  id="email"
+                  type="email"
                   required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="marie@exemple.com"
                   className="w-full rounded-xl border border-dark/10 px-4 py-3 text-sm outline-none focus:border-coral"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-dark/40 hover:text-dark"
-                >
-                  {showPassword ? "🙈" : "👁️"}
-                </button>
               </div>
-            </div>
 
-            {error && <p className="text-sm text-red-500">{error}</p>}
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label htmlFor="password" className="text-sm font-medium">
+                    Mot de passe
+                  </label>
+                  <Link href="/forgot-password" className="text-sm text-coral hover:underline">
+                    Mot de passe oublié ?
+                  </Link>
+                </div>
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full rounded-xl border border-dark/10 px-4 py-3 text-sm outline-none focus:border-coral"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-dark/40 hover:text-dark"
+                  >
+                    {showPassword ? "🙈" : "👁️"}
+                  </button>
+                </div>
+              </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="rounded-full bg-coral py-3 font-medium text-white transition hover:bg-coral-dark disabled:opacity-60"
-            >
-              {loading ? "Connexion..." : "Se connecter →"}
-            </button>
-          </form>
+              {error && <p className="text-sm text-red-500">{error}</p>}
 
+              <button
+                type="submit"
+                disabled={loading}
+                className="rounded-full bg-coral py-3 font-medium text-white transition hover:bg-coral-dark disabled:opacity-60"
+              >
+                {loading ? "Connexion..." : "Se connecter →"}
+              </button>
+            </form>
+          )}
           <p className="mt-6 text-center text-sm text-dark/60">
             Pas encore de compte ?{" "}
             <Link href="/register" className="text-coral hover:underline">

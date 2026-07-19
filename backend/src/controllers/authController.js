@@ -1,6 +1,9 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const userModel = require("../models/userModel");
+const mfaModel = require("../models/mfaModel");
+const { sendMfaCode } = require("../lib/mailer");
+
 
 const SALT_ROUNDS = 10;
 
@@ -32,30 +35,21 @@ async function register(req, res) {
 
 async function login(req, res) {
   const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email et mot de passe requis" });
-  }
+  if (!email || !password) return res.status(400).json({ error: "Email et mot de passe requis" });
 
   try {
     const user = await userModel.findByEmail(email);
-    if (!user) {
-      return res.status(401).json({ error: "Identifiants invalides" });
-    }
+    if (!user) return res.status(401).json({ error: "Identifiants invalides" });
 
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
-    if (!passwordMatch) {
-      return res.status(401).json({ error: "Identifiants invalides" });
-    }
+    if (!passwordMatch) return res.status(401).json({ error: "Identifiants invalides" });
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-      expiresIn: "2h",
-    });
+    const code = String(Math.floor(100000 + Math.random() * 900000)); // 6 chiffres
+    await mfaModel.create(user.id, code);
+    await sendMfaCode(user.email, code);
 
-    res.json({
-      user: { id: user.id, email: user.email, created_at: user.created_at },
-      token,
-    });
+    // Pas de token ici : juste une confirmation qu'un code a été envoyé
+    res.json({ mfaRequired: true, userId: user.id });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Erreur serveur" });
@@ -124,4 +118,21 @@ async function updatePassword(req, res) {
   }
 }
 
-module.exports = { register, login, me, updateProfile, updatePassword };
+async function verifyMfa(req, res) {
+  const { userId, code } = req.body;
+  if (!userId || !code) return res.status(400).json({ error: "Code requis" });
+
+  try {
+    const valid = await mfaModel.verify(userId, code);
+    if (!valid) return res.status(401).json({ error: "Code invalide ou expiré" });
+
+    const token = jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "1d" });
+    const user = await userModel.findById(userId);
+    res.json({ user, token });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+}
+
+module.exports = { register, login, me, updateProfile, updatePassword, verifyMfa };
