@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Canvas, FabricObject } from "fabric";
 import EditorHeader from "@/components/editorHeader";
 import EditorSidebar, { EditorTool } from "@/components/editorSidebar";
@@ -19,7 +19,12 @@ import { useCanvasHistory } from "@/hooks/useCanvasHistory";
 import { FORMATS, CardFormat } from "@/lib/formats";
 import ShareModal from "@/components/shareModal";
 import CardPreviewModal from "./cardPreviewModal";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ArrowLeft, ChevronLeft, ChevronRight,
+  Undo2, Redo2, Eye, Share2, Download, Save,
+} from "lucide-react";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import MobileToolbar from "./mobileToolbar";
 
 type SavedCard = {
   id: string;
@@ -32,8 +37,13 @@ type SavedCard = {
 
 type Props = {
   cardId?: string;
-  onClose: () => void; // appelé quand l'utilisateur veut quitter (flèche retour / modal résolu)
-  onSaved?: (card: SavedCard) => void; // appelé après un enregistrement réussi
+  onClose: () => void;
+  onSaved?: (card: SavedCard) => void;
+};
+
+const panelTitles: Record<EditorTool, string> = {
+  format: "Format", text: "Texte", shapes: "Formes",
+  stickers: "Stickers", images: "Images", background: "Fond",
 };
 
 export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Props) {
@@ -58,8 +68,52 @@ export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Pro
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
 
-  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
-  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  // Panneaux desktop fermés par défaut
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(true);
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(true);
+
+  const isMobile = useIsMobile();
+  const [mobileActiveTool, setMobileActiveTool] = useState<EditorTool | null>(null);
+
+  // Dernier état connu du canvas, mis à jour en continu — permet de restaurer le contenu
+  // si le canvas Fabric est démonté/remonté (ex: bascule mobile <-> desktop)
+  const latestCanvasJsonRef = useRef<object | null>(null);
+  const canvasScrollRef = useRef<HTMLDivElement>(null);
+
+  // Zoom automatique à l'ouverture sur mobile (recalculé si le format change),
+  // et retour à 100% par défaut en repassant sur desktop (symétrique, sinon le zoom
+  // mobile restait figé même après être revenu sur grand écran)
+  useEffect(() => {
+    if (isMobile === null) return; // pas encore déterminé
+    if (isMobile) {
+      const availableWidth = window.innerWidth - 32; // marge de la zone canvas
+      const availableHeight = window.innerHeight - 220; // header + barre du bas + marges
+      const fit = Math.min(availableWidth / format.widthPx, availableHeight / format.heightPx, 1) * 100;
+      setZoom(Math.max(20, Math.round(fit)));
+    } else {
+      setZoom(100);
+    }
+  }, [isMobile, format.widthPx, format.heightPx]);
+
+  // Zoom natif Fabric : redimensionne réellement le canvas à la taille voulue,
+  // au lieu d'un transform CSS externe qui devait coïncider parfaitement avec
+  // plusieurs conteneurs imbriqués (source du bug de contenu tronqué).
+  useEffect(() => {
+    if (!canvas) return;
+    const factor = zoom / 100;
+    canvas.setZoom(factor);
+    canvas.setDimensions({ width: format.widthPx * factor, height: format.heightPx * factor });
+    canvas.renderAll();
+  }, [canvas, zoom, format.widthPx, format.heightPx]);
+
+  // Recentre le scroll à chaque changement de zoom (mobile) : sinon la position de scroll
+  // précédente peut pointer hors de la carte une fois qu'elle a rétréci
+  useEffect(() => {
+    if (canvasScrollRef.current) {
+      canvasScrollRef.current.scrollTop = 0;
+      canvasScrollRef.current.scrollLeft = 0;
+    }
+  }, [zoom]);
 
   // Chargement d'une carte existante
   useEffect(() => {
@@ -87,17 +141,46 @@ export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Pro
   }, [cardIdProp]);
 
   useEffect(() => {
-    if (!canvas || !pendingCanvasJson) return;
-    canvas.loadFromJSON(pendingCanvasJson).then(() => {
+    if (!canvas) return;
+    function snapshot() {
+      latestCanvasJsonRef.current = canvas!.toObject(["isSticker"]);
+    }
+    canvas.on("object:added", snapshot);
+    canvas.on("object:modified", snapshot);
+    canvas.on("object:removed", snapshot);
+    return () => {
+      canvas.off("object:added", snapshot);
+      canvas.off("object:modified", snapshot);
+      canvas.off("object:removed", snapshot);
+    };
+  }, [canvas]);
+
+  useEffect(() => {
+    if (!canvas) return;
+    const jsonToLoad = pendingCanvasJson || latestCanvasJsonRef.current;
+    if (!jsonToLoad) return;
+
+    canvas.loadFromJSON(jsonToLoad).then(() => {
       canvas.renderAll();
+      // Peuple immédiatement la ref (pas seulement après une édition) : garantit qu'un
+      // basculement mobile/desktop juste après l'ouverture, sans aucune modification,
+      // dispose déjà d'un contenu à restaurer.
+      latestCanvasJsonRef.current = canvas.toObject(["isSticker"]);
       resetHistory();
       setPendingCanvasJson(null);
     });
+    // Volontairement dépendant de pendingCanvasJson : le fetch réseau (getCardById) peut
+    // se résoudre APRÈS le montage du canvas — sans cette dépendance, l'effet ne se
+    // redéclencherait jamais et la carte resterait blanche.
   }, [canvas, pendingCanvasJson, resetHistory]);
 
   useEffect(() => {
     if (!canvas) return;
-    const updateSelection = () => setSelectedObject(canvas.getActiveObject() || null);
+    const updateSelection = () => {
+      const active = canvas.getActiveObject() || null;
+      setSelectedObject(active);
+      if (active && isMobile) setMobileActiveTool(null); // referme l'outil actif, le tiroir bascule sur les propriétés
+    };
     canvas.on("selection:created", updateSelection);
     canvas.on("selection:updated", updateSelection);
     canvas.on("selection:cleared", () => setSelectedObject(null));
@@ -106,7 +189,7 @@ export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Pro
       canvas.off("selection:updated", updateSelection);
       canvas.off("selection:cleared");
     };
-  }, [canvas]);
+  }, [canvas, isMobile]);
 
   useEffect(() => {
     if (!canvas) return;
@@ -154,14 +237,12 @@ export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Pro
     setSaving(true);
     try {
       const canvasJson = canvas.toObject(["isSticker"]);
-      const thumbnail = canvas.toDataURL({ format: "png", multiplier: 2 });
+      const thumbnail = captureFullResolution(2);
 
       if (!isOwner && cardId) {
-        // Carte reçue : la première sauvegarde crée votre propre copie éditable
         const forked = await forkCardApi(cardId);
         setCardId(forked.id);
         setIsOwner(true);
-        // Applique immédiatement les modifs en cours sur la copie fraîchement créée
         const { card } = await saveCard({
           cardId: forked.id, title, canvasJson, thumbnail,
           format: format.id, widthPx: format.widthPx, heightPx: format.heightPx,
@@ -191,7 +272,7 @@ export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Pro
 
   function handleExport() {
     if (!canvas) return;
-    const dataUrl = canvas.toDataURL({ format: "png", multiplier: 5 });
+    const dataUrl = captureFullResolution(5);
     const link = document.createElement("a");
     link.href = dataUrl;
     link.download = `${title || "carte"}.png`;
@@ -222,8 +303,8 @@ export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Pro
     onClose();
   }
 
-  function renderLeftPanel() {
-    switch (activeTool) {
+  function renderPanelFor(tool: EditorTool) {
+    switch (tool) {
       case "text":
         return <TextPanel canvas={canvas} />;
       case "format":
@@ -241,18 +322,146 @@ export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Pro
     }
   }
 
-  const panelTitles: Record<EditorTool, string> = {
-    format: "Format", text: "Texte", shapes: "Formes",
-    stickers: "Stickers", images: "Images", background: "Fond",
-  };
-
   function handlePreview() {
-  if (!canvas) return;
-  const dataUrl = canvas.toDataURL({ format: "png", multiplier: 2 });
-  setPreviewDataUrl(dataUrl);
-  setShowPreview(true);
-}
+    if (!canvas) return;
+    const dataUrl = captureFullResolution(2);
+    setPreviewDataUrl(dataUrl);
+    setShowPreview(true);
+  }
 
+  // --- Ferme le tiroir mobile (outil ou sélection) ---
+  function closeMobileSheet() {
+    setMobileActiveTool(null);
+    if (selectedObject && canvas) {
+      canvas.discardActiveObject();
+      canvas.renderAll();
+      setSelectedObject(null);
+    }
+  }
+
+  const mobileSheetOpen = !!mobileActiveTool || !!selectedObject;
+  const mobileSheetTitle = mobileActiveTool ? panelTitles[mobileActiveTool] : "Propriétés";
+
+  // Capture toujours la carte à sa taille réelle (zoom 100%), quel que soit le zoom
+  // d'affichage courant — sinon toDataURL() exporterait à la résolution du zoom actuel.
+  function captureFullResolution(multiplier: number): string {
+    if (!canvas) return "";
+    const prevZoom = canvas.getZoom();
+    const prevWidth = canvas.getWidth();
+    const prevHeight = canvas.getHeight();
+
+    canvas.setZoom(1);
+    canvas.setDimensions({ width: format.widthPx, height: format.heightPx });
+    canvas.renderAll();
+
+    const dataUrl = canvas.toDataURL({ format: "png", multiplier });
+
+    canvas.setZoom(prevZoom);
+    canvas.setDimensions({ width: prevWidth, height: prevHeight });
+    canvas.renderAll();
+
+    return dataUrl;
+  }
+
+  if (isMobile === null) return null;
+
+  if (isMobile) {
+    return (
+      <div className="relative flex h-screen flex-col bg-white">
+        {/* Header compact : icônes seules, pas de texte */}
+        <header className="flex h-14 items-center justify-between border-b border-dark/10 px-2">
+          <div className="flex items-center gap-1">
+            <button onClick={handleBack} className="rounded-lg p-2 text-dark/60 hover:bg-cream-dark hover:text-dark">
+              <ArrowLeft size={19} />
+            </button>
+            <button onClick={undo} disabled={!canUndo} className="rounded-lg p-2 text-dark/50 hover:bg-cream-dark hover:text-dark disabled:opacity-30 disabled:hover:bg-transparent">
+              <Undo2 size={17} />
+            </button>
+            <button onClick={redo} disabled={!canRedo} className="rounded-lg p-2 text-dark/50 hover:bg-cream-dark hover:text-dark disabled:opacity-30 disabled:hover:bg-transparent">
+              <Redo2 size={17} />
+            </button>
+          </div>
+
+          <p className="mx-1 flex-1 truncate text-center text-xs font-medium">{title}</p>
+
+          <div className="flex items-center gap-1">
+            <button onClick={handlePreview} className="rounded-lg p-2 text-dark/50 hover:bg-cream-dark hover:text-dark">
+              <Eye size={17} />
+            </button>
+            <button
+              onClick={() => (cardId ? setShowShareModal(true) : alert("Enregistrez la carte avant de la partager."))}
+              className="rounded-lg p-2 text-coral-dark hover:bg-coral/10"
+            >
+              <Share2 size={17} />
+            </button>
+            <button onClick={handleExport} className="rounded-lg p-2 text-dark/50 hover:bg-cream-dark hover:text-dark">
+              <Download size={17} />
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center justify-center rounded-full bg-coral p-2 text-white hover:bg-coral-dark disabled:opacity-60"
+            >
+              <Save size={16} />
+            </button>
+          </div>
+        </header>
+
+        {!isOwner && (
+          <div className="border-b border-coral/20 bg-coral/5 px-3 py-1.5 text-center text-[11px] font-medium text-coral">
+            Reçue — enregistrer pour garder une copie
+          </div>
+        )}
+
+        {/* Zone canvas : Fabric gère lui-même sa taille réelle (zoom natif), w-fit + mx-auto
+            centre correctement sans le bug de scroll bloqué des flex items-center/justify-center */}
+        <div ref={canvasScrollRef} className="relative flex-1 overflow-auto bg-dark/90 p-4">
+          <div className="w-fit mx-auto">
+            <CardCanvas width={format.widthPx} height={format.heightPx} onReady={setCanvas} />
+          </div>
+        </div>
+
+        {/* Zoom en position fixe, en bas (jamais au niveau du header) : ne recouvre jamais d'autres boutons */}
+        <div className="fixed bottom-20 right-3 z-40">
+          <ZoomControls zoom={zoom} onZoomChange={setZoom} />
+        </div>
+
+        <MobileToolbar
+          activeTool={mobileActiveTool}
+          onSelectTool={setMobileActiveTool}
+          sheetOpen={mobileSheetOpen}
+          sheetTitle={mobileSheetTitle}
+          onCloseSheet={closeMobileSheet}
+        >
+          {mobileActiveTool
+            ? renderPanelFor(mobileActiveTool)
+            : selectedObject && (
+                <PropertiesPanel
+                  canvas={canvas}
+                  selectedObject={selectedObject}
+                  onDelete={handleDeleteSelected}
+                  onChange={() => { pushState(); setIsDirty(true); }}
+                />
+              )}
+        </MobileToolbar>
+
+        <UnsavedChangesModal open={showUnsavedModal} onSave={handleSaveAndLeave} onDiscard={handleDiscardAndLeave} onCancel={() => setShowUnsavedModal(false)} saving={saving} />
+
+        {showShareModal && cardId && <ShareModal cardId={cardId} onClose={() => setShowShareModal(false)} />}
+
+        {showPreview && (
+          <CardPreviewModal
+            thumbnailUrl={previewDataUrl}
+            widthPx={format.widthPx}
+            heightPx={format.heightPx}
+            onClose={() => setShowPreview(false)}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // --- Desktop ---
   return (
     <div className="flex h-screen flex-col bg-white">
       <EditorHeader
@@ -274,13 +483,13 @@ export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Pro
       />
 
       <div className="flex flex-1 overflow-hidden">
-        <EditorSidebar activeTool={activeTool} onSelectTool={setActiveTool} />
+        <EditorSidebar activeTool={activeTool} onSelectTool={(tool) => { setActiveTool(tool); setLeftPanelCollapsed(false); }} />
 
         <div className={`relative flex flex-col border-r border-dark/10 bg-white transition-all duration-200 ${leftPanelCollapsed ? "w-0 overflow-hidden" : "w-72"}`}>
           <div className="flex items-center justify-between border-b border-dark/10 px-5 py-4">
             <h2 className="font-medium">{panelTitles[activeTool]}</h2>
           </div>
-          {renderLeftPanel()}
+          {renderPanelFor(activeTool)}
         </div>
 
         <button
@@ -290,11 +499,14 @@ export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Pro
           {leftPanelCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
 
-        <div className="relative flex flex-1 items-center justify-center overflow-auto bg-dark/90 p-8">
-          <div style={{ transform: `scale(${zoom / 100})` }}>
+        {/* Zone canvas : Fabric gère lui-même sa taille réelle (zoom natif) */}
+        <div className="relative flex-1 overflow-auto bg-dark/90 p-8">
+          <div className="w-fit mx-auto">
             <CardCanvas width={format.widthPx} height={format.heightPx} onReady={setCanvas} />
           </div>
-          <ZoomControls zoom={zoom} onZoomChange={setZoom} />
+          <div className="absolute bottom-6 right-6">
+            <ZoomControls zoom={zoom} onZoomChange={setZoom} />
+          </div>
         </div>
 
         <button
@@ -322,9 +534,7 @@ export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Pro
         saving={saving}
       />
 
-      {showShareModal && cardId && (
-        <ShareModal cardId={cardId} onClose={() => setShowShareModal(false)} />
-      )}
+      {showShareModal && cardId && <ShareModal cardId={cardId} onClose={() => setShowShareModal(false)} />}
 
       {showPreview && (
         <CardPreviewModal
