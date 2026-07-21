@@ -74,7 +74,7 @@ async function runNudgeJob() {
       ? (Date.now() - new Date(last.created_at).getTime()) / (1000 * 60 * 60 * 24)
       : Infinity;
 
-    if (daysSinceLast >= 14) {
+    if (daysSinceLast >= 5) {
       await notifyUser({
         userId: user.id,
         type: "nudge",

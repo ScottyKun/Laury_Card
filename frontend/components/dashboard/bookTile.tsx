@@ -36,7 +36,7 @@ export default function BookTile({ book, onDelete, onDuplicate }: Props) {
         <div className="absolute right-2 top-2">
           <button
             onClick={() => setMenuOpen((v) => !v)}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-dark/70 opacity-0 backdrop-blur transition group-hover:opacity-100 hover:bg-white"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-dark/70 opacity-100 backdrop-blur transition hover:bg-white md:opacity-0 md:group-hover:opacity-100"
           >
             <MoreVertical size={16} />
           </button>

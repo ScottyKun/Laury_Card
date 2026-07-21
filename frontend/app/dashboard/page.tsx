@@ -145,16 +145,6 @@ export default function DashboardPage() {
           <p className="py-10 text-center text-dark/40">Chargement...</p>
         ) : (
           <div className="grid grid-cols-2 gap-6 py-8 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            <button
-              onClick={handleCreateBook}
-              className="flex aspect-[3/4] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-dark/15 text-dark/50 hover:border-coral hover:text-coral"
-            >
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-dark/5">
-                <BookOpen size={18} />
-              </span>
-              Créer un livre
-            </button>
-
             {books.map((book) => (
               <BookTile key={book.id} book={book} onDelete={handleDeleteBook} onDuplicate={handleDuplicateBook} />
             ))}
