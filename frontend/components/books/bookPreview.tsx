@@ -44,7 +44,7 @@ export default function BookPreview({ pages, onClose }: Props) {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [index]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [index]);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-dark/95">

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, Undo2, Redo2, Share2, Download, Save } from "lucide-react";
 
 type Props = {
@@ -25,7 +24,6 @@ type Props = {
 export default function EditorHeader({
   title, onTitleChange, format, savedAt, onSave, saving, onExport, onUndo, onRedo, canUndo, canRedo, onBack, onShare, isOwner, onPreview,
 }: Props) {
-  const router = useRouter();
   const [editingTitle, setEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState(title);
 

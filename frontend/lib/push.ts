@@ -32,7 +32,7 @@ export async function subscribeToPush(vapidPublicKey: string): Promise<{ success
     });
 
     return { success: true };
-  } catch (err) {
+  } catch  {
     return {
       success: false,
       reason: "Les notifications système ne sont pas disponibles sur ce navigateur (paramètre bloqué).",

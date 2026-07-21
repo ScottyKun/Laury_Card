@@ -28,7 +28,6 @@ export default function CardCanvas({ width, height, onReady }: CardCanvasProps) 
     return () => {
       canvas.dispose();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Redimensionne le canvas si le format change (sans le recréer)

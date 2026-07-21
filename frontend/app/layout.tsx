@@ -14,7 +14,6 @@ import {
   Indie_Flower,
   Great_Vibes,
   Roboto_Slab,
-  Abril_Fatface,
 } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerRegister from "@/components/serviceWorkerRegister";

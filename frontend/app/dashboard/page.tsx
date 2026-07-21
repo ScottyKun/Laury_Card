@@ -1,16 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import { Plus, Image as ImageIcon, BookOpen } from "lucide-react";
+import { Image as ImageIcon, BookOpen } from "lucide-react";
 import DashboardNavbar from "@/components/dashboard/dashboardNavbar";
 import GreetingBanner from "@/components/dashboard/greetingBanner";
 import CardTile from "@/components/dashboard/cardTile";
-import { getCards, getCurrentUser, deleteCardApi, CardSummary, duplicateCardApi, getBooks, createBookApi, deleteBookApi, Book, getUnreadNotificationCount, duplicateBookApi  } from "@/lib/api";
+import { getCards, getCurrentUser, deleteCardApi, CardSummary, duplicateCardApi, getBooks, createBookApi, deleteBookApi, Book, getUnreadNotificationCount, duplicateBookApi } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import BookTile from "@/components/dashboard/bookTile";
 import { subscribeToPush } from "@/lib/push";
-
 
 export default function DashboardPage() {
   const [firstName, setFirstName] = useState<string>();
@@ -110,8 +108,8 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-cream">
-      <DashboardNavbar firstName={firstName} unreadCount={unreadCount} onNewNotification={handleNewNotification}/>
-      <GreetingBanner firstName={firstName} onCreateBook={handleCreateBook}/>
+      <DashboardNavbar firstName={firstName} unreadCount={unreadCount} onNewNotification={handleNewNotification} />
+      <GreetingBanner firstName={firstName} onCreateBook={handleCreateBook} />
 
       <div className="px-6 pt-8">
         <div className="flex gap-6 border-b border-dark/10">
@@ -138,14 +136,25 @@ export default function DashboardPage() {
             <p className="py-10 text-center text-dark/40">Chargement...</p>
           ) : (
             <div className="grid grid-cols-2 gap-6 py-8 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-
               {cards.map((card, i) => (
                 <CardTile key={card.id} card={card} index={i} onDelete={handleDelete} onDuplicate={handleDuplicate} />
               ))}
             </div>
           )
+        ) : booksLoading ? (
+          <p className="py-10 text-center text-dark/40">Chargement...</p>
         ) : (
           <div className="grid grid-cols-2 gap-6 py-8 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <button
+              onClick={handleCreateBook}
+              className="flex aspect-[3/4] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-dark/15 text-dark/50 hover:border-coral hover:text-coral"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-dark/5">
+                <BookOpen size={18} />
+              </span>
+              Créer un livre
+            </button>
+
             {books.map((book) => (
               <BookTile key={book.id} book={book} onDelete={handleDeleteBook} onDuplicate={handleDuplicateBook} />
             ))}

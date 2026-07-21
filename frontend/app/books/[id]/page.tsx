@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ArrowLeft, Plus, X, Eye, Save, Copy, RefreshCw, Pencil,
+  ArrowLeft, X, Eye, Save, Copy, RefreshCw, Pencil,
   Share2, Download, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Image as ImageIcon,
 } from "lucide-react";
 import { getBookById, updateBookApi, getCards, CardSummary, BookPage, exportBookPdf } from "@/lib/api";
@@ -12,6 +12,7 @@ import CardEditorModal from "@/components/cardEditorModal";
 import UnsavedChangesModal from "@/components/unsavedChangesModal";
 import ShareModal from "@/components/shareModal";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import CardPickerContent from "@/components/books/cardPickerContent";
 
 type LocalPage = {
   cardId: string;
@@ -248,48 +249,6 @@ export default function BookEditorPage() {
     }
   }
 
-  // --- Contenu du panneau "Mes cartes", partagé entre la version desktop (colonne) et mobile (overlay) ---
-  function CardPickerContent() {
-    return (
-      <>
-        <button
-          onClick={openCreateCard}
-          className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-dark/15 py-3 text-sm text-dark/60 hover:border-coral hover:text-coral"
-        >
-          <Plus size={16} /> Créer une carte
-        </button>
-
-        {replaceTargetIndex !== null && (
-          <div className="mb-3 flex items-center justify-between rounded-lg bg-coral/10 px-3 py-2 text-xs text-coral-dark">
-            Sélectionnez une carte pour remplacer la page {replaceTargetIndex + 1}
-            <button onClick={() => setReplaceTargetIndex(null)} className="font-medium underline">Annuler</button>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-3">
-          {availableCards.map((card) => (
-            <button
-              key={card.id}
-              onClick={() => addCard(card)}
-              className="group relative overflow-hidden rounded-lg border border-dark/10 hover:border-coral"
-              style={{ aspectRatio: `${card.width_px} / ${card.height_px}` }}
-            >
-              {card.thumbnail_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={card.thumbnail_url} alt={card.title} className="h-full w-full object-cover" />
-              ) : (
-                <div className="h-full w-full bg-cream-dark" />
-              )}
-              <div className="absolute inset-0 flex items-center justify-center bg-dark/0 opacity-0 transition group-hover:bg-dark/30 group-hover:opacity-100">
-                <Plus className="text-white" size={20} />
-              </div>
-            </button>
-          ))}
-        </div>
-      </>
-    );
-  }
-
   const headerSubtitle = `${pages.length} page${pages.length > 1 ? "s" : ""} · ~${pages.length * 4}s de lecture`;
 
   if (isMobile === null) return null;
@@ -414,7 +373,13 @@ export default function BookEditorPage() {
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto p-4">
-                <CardPickerContent />
+                <CardPickerContent
+                  availableCards={availableCards}
+                  replaceTargetIndex={replaceTargetIndex}
+                  onSelectCard={addCard}
+                  onCreateCard={openCreateCard}
+                  onCancelReplace={() => setReplaceTargetIndex(null)}
+                />
               </div>
             </div>
           )
@@ -424,7 +389,13 @@ export default function BookEditorPage() {
             <div className={`overflow-hidden border-r border-dark/10 bg-white transition-all duration-200 ${leftPanelCollapsed ? "w-0" : "w-80"}`}>
               <div className="h-full overflow-y-auto p-5">
                 <h2 className="mb-4 font-medium">Mes cartes</h2>
-                <CardPickerContent />
+                <CardPickerContent
+                  availableCards={availableCards}
+                  replaceTargetIndex={replaceTargetIndex}
+                  onSelectCard={addCard}
+                  onCreateCard={openCreateCard}
+                  onCancelReplace={() => setReplaceTargetIndex(null)}
+                />
               </div>
             </div>
 

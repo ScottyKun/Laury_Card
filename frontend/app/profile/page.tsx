@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { User, Lock, Heart, Trash2  } from "lucide-react";
 import AuthPanel from "@/components/authPanel";
 import { getCurrentUser, updateProfile, changePassword, createMilestoneApi, getMilestones, deleteMilestoneApi, Milestone } from "@/lib/api";
 
 export default function ProfilePage() {
-  const router = useRouter();
 
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");

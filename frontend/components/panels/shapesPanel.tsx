@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Canvas, Rect, Circle, Triangle, Line, Ellipse, Polygon,
-  FabricObject, PencilBrush, Point,
+  FabricObject, PencilBrush,
 } from "fabric";
 import { Pencil, Hexagon } from "lucide-react";
 
