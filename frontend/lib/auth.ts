@@ -1,5 +1,5 @@
 const TOKEN_KEY = "token";
-const COOKIE_MAX_AGE = 60 * 60 * 24; 
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 5; 
 import { disconnectSocket } from "./socket";
 
 export function setToken(token: string) {

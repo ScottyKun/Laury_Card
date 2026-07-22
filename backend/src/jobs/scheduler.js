@@ -1,6 +1,7 @@
 const cron = require("node-cron");
 const pool = require("../db");
 const milestoneModel = require("../models/milestoneModel");
+const notificationModel = require("../models/notificationModel");
 const { notifyUser } = require("../services/notificationService");
 
 function elapsedYearsMonths(startDate, today) {

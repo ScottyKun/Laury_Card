@@ -126,7 +126,7 @@ async function verifyMfa(req, res) {
     const valid = await mfaModel.verify(userId, code);
     if (!valid) return res.status(401).json({ error: "Code invalide ou expiré" });
 
-    const token = jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "1d" });
+    const token = jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "5d" });
     const user = await userModel.findById(userId);
     res.json({ user, token });
   } catch (err) {

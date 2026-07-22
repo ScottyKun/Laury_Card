@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AuthPanel from "@/components/authPanel";
@@ -23,8 +23,18 @@ function LoginForm() {
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState("");
 
+  // Verrous synchrones (ref, pas state) : un state ne se met à jour qu'au prochain
+  // rendu, donc deux soumissions quasi simultanées (double-tap, touche "Entrée" du
+  // clavier + tap manuel) peuvent toutes les deux lire loading=false avant le premier
+  // re-render. Une ref, elle, est immédiatement à jour, sans attendre React.
+  const isSubmittingLoginRef = useRef(false);
+  const isSubmittingMfaRef = useRef(false);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (isSubmittingLoginRef.current) return;
+    isSubmittingLoginRef.current = true;
+
     setError(null);
     setLoading(true);
     try {
@@ -35,11 +45,15 @@ function LoginForm() {
       setError(err instanceof Error ? err.message : "Une erreur est survenue");
     } finally {
       setLoading(false);
+      isSubmittingLoginRef.current = false;
     }
   }
 
   async function handleMfaSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (isSubmittingMfaRef.current) return;
+    isSubmittingMfaRef.current = true;
+
     setError(null);
     setLoading(true);
     try {
@@ -50,6 +64,7 @@ function LoginForm() {
       setError(err instanceof Error ? err.message : "Code invalide");
     } finally {
       setLoading(false);
+      isSubmittingMfaRef.current = false;
     }
   }
 
@@ -77,14 +92,18 @@ function LoginForm() {
               Votre session a expiré, reconnectez-vous.
             </p>
           )}
-          
+
           {step === "mfa" ? (
             <form onSubmit={handleMfaSubmit} className="mt-8 flex flex-col gap-5">
               <p className="text-sm text-dark/60">Un code à 6 chiffres a été envoyé à votre adresse email.</p>
               <input
                 value={mfaCode}
                 onChange={(e) => setMfaCode(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                }}
                 maxLength={6}
+                inputMode="numeric"
                 placeholder="000000"
                 className="w-full rounded-xl border border-dark/10 px-4 py-3 text-center text-2xl tracking-widest outline-none focus:border-coral"
               />

@@ -13,7 +13,14 @@ export async function subscribeToPush(vapidPublicKey: string): Promise<{ success
   }
 
   try {
-    const registration = await navigator.serviceWorker.register("/sw.js");
+    const registration = await navigator.serviceWorker.ready;
+
+    // Vérifie d'abord si un abonnement existe déjà — évite de tout refaire à chaque montage
+    const existingSubscription = await registration.pushManager.getSubscription();
+    if (existingSubscription) {
+      return { success: true };
+    }
+
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {
       return { success: false, reason: "Permission refusée." };
@@ -32,10 +39,10 @@ export async function subscribeToPush(vapidPublicKey: string): Promise<{ success
     });
 
     return { success: true };
-  } catch  {
+  } catch (err) {
     return {
       success: false,
-      reason: "Les notifications système ne sont pas disponibles sur ce navigateur (paramètre bloqué).",
+      reason: "Les notifications système ne sont pas disponibles sur ce navigateur (paramètre bloqué, ex: Brave).",
     };
   }
 }
