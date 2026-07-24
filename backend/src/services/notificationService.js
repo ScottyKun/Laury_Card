@@ -20,11 +20,19 @@ async function sendPushToUser(userId, payload) {
     try {
       await webpush.sendNotification(pushConfig, JSON.stringify(payload));
     } catch (err) {
-      // Abonnement expiré/invalide (410 Gone) : on le supprime silencieusement
-      if (err.statusCode === 410 || err.statusCode === 404) {
+      const statusCode = err.statusCode;
+      const shortEndpoint = sub.endpoint.slice(-30); // juste la fin, pour identifier sans polluer les logs
+
+      // 404/410 : abonnement définitivement mort (désinstallation, expiration) -> nettoyage silencieux normal
+      // 400/401/403 : payload ou clés VAPID invalides pour CET abonnement -> aussi à nettoyer, mais on log pour comprendre
+      if ([404, 410].includes(statusCode)) {
+        await pushSubscriptionModel.remove(sub.id);
+      } else if ([400, 401, 403].includes(statusCode)) {
+        console.error(`Web Push rejeté (${statusCode}) pour ...${shortEndpoint} — abonnement supprimé. Détail:`, err.body || err.message);
         await pushSubscriptionModel.remove(sub.id);
       } else {
-        console.error("Erreur Web Push:", err.message);
+        // Erreur transitoire (réseau, timeout, 5xx) : on garde l'abonnement, ça peut réussir la prochaine fois
+        console.error(`Erreur Web Push (${statusCode || "réseau"}) pour ...${shortEndpoint}:`, err.body || err.message);
       }
     }
   }

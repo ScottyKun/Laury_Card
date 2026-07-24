@@ -74,6 +74,7 @@ export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Pro
 
   const isMobile = useIsMobile();
   const [mobileActiveTool, setMobileActiveTool] = useState<EditorTool | null>(null);
+  const [editingMobileTitle, setEditingMobileTitle] = useState(false);
 
   // Dernier état connu du canvas, mis à jour en continu — permet de restaurer le contenu
   // si le canvas Fabric est démonté/remonté (ex: bascule mobile <-> desktop)
@@ -382,7 +383,25 @@ export default function CardEditor({ cardId: cardIdProp, onClose, onSaved }: Pro
             </button>
           </div>
 
-          <p className="mx-1 flex-1 truncate text-center text-xs font-medium">{title}</p>
+          {editingMobileTitle ? (
+            <input
+              autoFocus
+              value={title}
+              onChange={(e) => { setTitle(e.target.value); setIsDirty(true); }}
+              onBlur={() => setEditingMobileTitle(false)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { setEditingMobileTitle(false); (e.target as HTMLInputElement).blur(); }
+              }}
+              className="mx-1 flex-1 rounded-md border border-coral bg-white px-2 py-1 text-center text-xs font-medium outline-none"
+            />
+          ) : (
+            <p
+              onClick={() => setEditingMobileTitle(true)}
+              className="mx-1 flex-1 truncate rounded-md px-2 py-1 text-center text-xs font-medium hover:bg-cream-dark"
+            >
+              {title}
+            </p>
+          )}
 
           <div className="flex items-center gap-1">
             <button onClick={handlePreview} className="rounded-lg p-2 text-dark/50 hover:bg-cream-dark hover:text-dark">
